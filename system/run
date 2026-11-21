@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""system/run <data folder> <output file>: one JSON line per hit."""
+import collections
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from engine import run  # noqa: E402
+
+if __name__ == "__main__":
+    args = [a for a in sys.argv[1:] if a != "--stats"]
+    if len(args) != 2:
+        sys.stderr.write("usage: system/run <data folder> <output file> [--stats]\n")
+        sys.exit(2)
+    if not os.path.isdir(args[0]) or not os.path.exists(os.path.join(args[0], "hits.jsonl")):
+        sys.stderr.write("system/run: %s is not a data folder with hits.jsonl\n" % args[0])
+        sys.exit(2)
+    stats = collections.Counter()
+    rows = run(args[0], stats)
+    out = args[1]
+    d = os.path.dirname(os.path.abspath(out))
+    os.makedirs(d, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False, sort_keys=False) + "\n")
+    if "--stats" in sys.argv[1:]:
+        # stats go to stderr so the output file stays the same either way
+        for k in sorted(stats):
+            sys.stderr.write("%-48s %d\n" % (k, stats[k]))
